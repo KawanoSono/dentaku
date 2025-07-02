@@ -1,1 +1,208 @@
 # dentaku
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルな電卓</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-gray-700 min-h-screen flex items-center justify-center p-4">
+    <div class="calculator bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-700">
+        <!-- ディスプレイ -->
+        <div class="display bg-gray-900 text-right text-white text-5xl p-4 mb-6 rounded-xl overflow-hidden break-words min-h-[80px] flex items-end justify-end shadow-inner">
+            <div id="current-operand" class="flex-grow">0</div>
+        </div>
+
+        <!-- ボタンコンテナ -->
+        <div class="grid grid-cols-4 gap-4">
+            <!-- 特殊ボタン (クリア、符号、パーセント) -->
+            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="clear">C</button>
+            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="negate">+/-</button>
+            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="percent">%</button>
+            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200 col-span-1" data-action="operator" data-value="/">÷</button>
+
+            <!-- 数字ボタン -->
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="7">7</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="8">8</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="9">9</button>
+            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="*">×</button>
+
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="4">4</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="5">5</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="6">6</button>
+            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="-">-</button>
+
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="1">1</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="2">2</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="3">3</button>
+            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="+">+</button>
+
+            <!-- 0と小数点、イコールボタン -->
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200 col-span-2" data-value="0">0</button>
+            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value=".">.</button>
+            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="equals">=</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const currentOperandDisplay = document.getElementById('current-operand');
+        const buttons = document.querySelectorAll('.button');
+
+        // 電卓の状態変数
+        let currentOperand = '0'; // 現在入力中の数値
+        let previousOperand = ''; // 演算子選択前の数値
+        let operation = null;     // 選択された演算子 (+, -, *, /)
+        let resetDisplay = false; // 次の数字入力でディスプレイをリセットするか
+
+        /**
+         * ディスプレイを更新する関数
+         * @param {string} value - ディスプレイに表示する値
+         */
+        function updateDisplay(value) {
+            currentOperandDisplay.textContent = value;
+        }
+
+        /**
+         * 数字ボタンがクリックされた時の処理
+         * @param {string} number - クリックされた数字
+         */
+        function appendNumber(number) {
+            if (resetDisplay) {
+                currentOperand = number;
+                resetDisplay = false;
+            } else {
+                // 最初の0の場合や、小数点入力後の0の場合の処理
+                if (currentOperand === '0' && number !== '.') {
+                    currentOperand = number;
+                } else if (number === '.' && currentOperand.includes('.')) {
+                    // 既に小数点がある場合は追加しない
+                    return;
+                } else {
+                    currentOperand += number;
+                }
+            }
+            updateDisplay(currentOperand);
+        }
+
+        /**
+         * 演算子ボタンがクリックされた時の処理
+         * @param {string} operator - クリックされた演算子
+         */
+        function chooseOperation(operator) {
+            if (currentOperand === '') return; // 数字が入力されていない場合は何もしない
+            if (previousOperand !== '' && operation !== null) {
+                // 既に前の演算と数字がある場合は、続けて計算を実行
+                calculate();
+            }
+            operation = operator;
+            previousOperand = currentOperand;
+            resetDisplay = true; // 次の数字入力でディスプレイをリセット
+        }
+
+        /**
+         * 計算を実行する関数
+         */
+        function calculate() {
+            let computation;
+            const prev = parseFloat(previousOperand);
+            const current = parseFloat(currentOperand);
+
+            if (isNaN(prev) || isNaN(current)) return; // 無効な数値の場合は何もしない
+
+            switch (operation) {
+                case '+':
+                    computation = prev + current;
+                    break;
+                case '-':
+                    computation = prev - current;
+                    break;
+                case '*':
+                    computation = prev * current;
+                    break;
+                case '/':
+                    // 0での除算を避ける
+                    if (current === 0) {
+                        currentOperand = 'エラー';
+                        operation = null;
+                        previousOperand = '';
+                        updateDisplay(currentOperand);
+                        return;
+                    }
+                    computation = prev / current;
+                    break;
+                default:
+                    return; // 演算子が選択されていない場合は何もしない
+            }
+
+            currentOperand = computation.toString();
+            operation = null;
+            previousOperand = '';
+            resetDisplay = true; // 計算結果表示後、次の数字入力でリセット
+            updateDisplay(currentOperand);
+        }
+
+        /**
+         * 全てをクリアする関数
+         */
+        function clearAll() {
+            currentOperand = '0';
+            previousOperand = '';
+            operation = null;
+            resetDisplay = false;
+            updateDisplay(currentOperand);
+        }
+
+        /**
+         * 符号を反転させる関数 (+/-)
+         */
+        function negateNumber() {
+            if (currentOperand === '0' || currentOperand === '' || currentOperand === 'エラー') return;
+            currentOperand = (parseFloat(currentOperand) * -1).toString();
+            updateDisplay(currentOperand);
+        }
+
+        /**
+         * パーセントを計算する関数
+         */
+        function calculatePercent() {
+            if (currentOperand === '' || currentOperand === 'エラー') return;
+            currentOperand = (parseFloat(currentOperand) / 100).toString();
+            updateDisplay(currentOperand);
+        }
+
+        // 各ボタンにイベントリスナーを追加
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const value = button.dataset.value;
+                const action = button.dataset.action;
+
+                if (action === 'clear') {
+                    clearAll();
+                } else if (action === 'negate') {
+                    negateNumber();
+                } else if (action === 'percent') {
+                    calculatePercent();
+                } else if (action === 'operator') {
+                    chooseOperation(value);
+                } else if (action === 'equals') {
+                    calculate();
+                } else { // 数字ボタン
+                    appendNumber(value);
+                }
+            });
+        });
+
+        // 初期表示
+        updateDisplay(currentOperand);
+    </script>
+</body>
+</html>
