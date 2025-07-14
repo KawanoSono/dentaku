@@ -1,10 +1,9 @@
-# dentaku
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シンプルな電卓</title>
+    <title>スライドパズル</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -12,197 +11,251 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* カスタムスタイル */
+        .puzzle-board {
+            display: grid;
+            /* JavaScriptでgrid-template-columnsを設定します */
+            gap: 8px; /* タイル間の隙間 */
+            aspect-ratio: 1 / 1; /* 正方形を維持 */
+            max-width: 500px; /* 最大幅 */
+            width: 100%; /* 親要素に合わせる */
+        }
+        .puzzle-tile {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #3b82f6; /* 青色 */
+            color: white;
+            font-size: 2.5rem; /* タイルの文字サイズ */
+            font-weight: bold;
+            border-radius: 12px; /* 角丸 */
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+            user-select: none; /* テキスト選択を無効にする */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 影 */
+        }
+        .puzzle-tile:hover {
+            background-color: #2563eb; /* ホバー時の色 */
+            transform: scale(1.02); /* ホバー時に少し拡大 */
+        }
+        .puzzle-tile.empty {
+            background-color: #1f2937; /* 空のタイルの色 (ダークグレー) */
+            cursor: default;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* 内側の影 */
+            transform: none; /* 空のタイルは拡大しない */
+        }
+        .puzzle-tile.empty:hover {
+            background-color: #1f2937; /* ホバー時の色も同じ */
+            transform: none;
+        }
+
+        /* メッセージボックスのスタイル */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            z-index: 1000;
+            display: none; /* 初期状態では非表示 */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        .message-box.show {
+            display: block;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-900 to-gray-700 min-h-screen flex items-center justify-center p-4">
-    <div class="calculator bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-700">
-        <!-- ディスプレイ -->
-        <div class="display bg-gray-900 text-right text-white text-5xl p-4 mb-6 rounded-xl overflow-hidden break-words min-h-[80px] flex items-end justify-end shadow-inner">
-            <div id="current-operand" class="flex-grow">0</div>
+<body class="bg-gradient-to-br from-gray-900 to-gray-700 min-h-screen flex flex-col items-center justify-center p-4 text-white">
+
+    <h1 class="text-4xl font-extrabold mb-8 text-center">スライドパズル</h1>
+
+    <div id="puzzle-container" class="relative w-full max-w-lg flex flex-col items-center">
+        <div id="puzzle-board" class="puzzle-board bg-gray-800 p-4 rounded-2xl shadow-2xl border border-gray-700">
+            <!-- パズルタイルはJavaScriptでここに生成されます -->
         </div>
 
-        <!-- ボタンコンテナ -->
-        <div class="grid grid-cols-4 gap-4">
-            <!-- 特殊ボタン (クリア、符号、パーセント) -->
-            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="clear">C</button>
-            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="negate">+/-</button>
-            <button class="button bg-gray-600 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-500 transition-colors duration-200 col-span-1" data-action="percent">%</button>
-            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200 col-span-1" data-action="operator" data-value="/">÷</button>
-
-            <!-- 数字ボタン -->
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="7">7</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="8">8</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="9">9</button>
-            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="*">×</button>
-
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="4">4</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="5">5</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="6">6</button>
-            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="-">-</button>
-
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="1">1</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="2">2</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value="3">3</button>
-            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="operator" data-value="+">+</button>
-
-            <!-- 0と小数点、イコールボタン -->
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200 col-span-2" data-value="0">0</button>
-            <button class="button bg-gray-700 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-gray-600 transition-colors duration-200" data-value=".">.</button>
-            <button class="button bg-orange-500 text-white text-2xl font-semibold p-4 rounded-full shadow-md hover:bg-orange-400 transition-colors duration-200" data-action="equals">=</button>
+        <div class="mt-8 flex space-x-4">
+            <button id="shuffle-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50">
+                シャッフル
+            </button>
         </div>
+    </div>
+
+    <!-- メッセージボックス -->
+    <div id="message-box" class="message-box">
+        <p id="message-text"></p>
+        <button id="message-close-button" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition-colors duration-200">閉じる</button>
     </div>
 
     <script>
         // DOM要素の取得
-        const currentOperandDisplay = document.getElementById('current-operand');
-        const buttons = document.querySelectorAll('.button');
+        const puzzleBoard = document.getElementById('puzzle-board');
+        const shuffleButton = document.getElementById('shuffle-button');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageCloseButton = document.getElementById('message-close-button');
 
-        // 電卓の状態変数
-        let currentOperand = '0'; // 現在入力中の数値
-        let previousOperand = ''; // 演算子選択前の数値
-        let operation = null;     // 選択された演算子 (+, -, *, /)
-        let resetDisplay = false; // 次の数字入力でディスプレイをリセットするか
+        // ゲーム設定
+        const boardSize = 3; // 例: 3x3のパズル
+        const totalTiles = boardSize * boardSize;
+        let tiles = []; // 現在のタイルの配置を保持する配列
+        let emptyTileIndex = totalTiles - 1; // 空のタイルのインデックス (最初は最後の位置)
+        let isSolved = false; // パズルが解決済みかどうか
 
         /**
-         * ディスプレイを更新する関数
-         * @param {string} value - ディスプレイに表示する値
+         * メッセージボックスを表示する関数
+         * @param {string} message - 表示するメッセージ
          */
-        function updateDisplay(value) {
-            currentOperandDisplay.textContent = value;
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.add('show');
         }
 
         /**
-         * 数字ボタンがクリックされた時の処理
-         * @param {string} number - クリックされた数字
+         * メッセージボックスを非表示にする関数
          */
-        function appendNumber(number) {
-            if (resetDisplay) {
-                currentOperand = number;
-                resetDisplay = false;
-            } else {
-                // 最初の0の場合や、小数点入力後の0の場合の処理
-                if (currentOperand === '0' && number !== '.') {
-                    currentOperand = number;
-                } else if (number === '.' && currentOperand.includes('.')) {
-                    // 既に小数点がある場合は追加しない
-                    return;
+        function hideMessageBox() {
+            messageBox.classList.remove('show');
+        }
+
+        /**
+         * ゲームを初期化する関数
+         */
+        function initGame() {
+            // パズルボードのグリッドテンプレート列を設定
+            puzzleBoard.style.gridTemplateColumns = `repeat(${boardSize}, 1fr)`;
+
+            // タイルを初期順序で生成
+            tiles = Array.from({ length: totalTiles }, (_, i) => i + 1);
+            tiles[totalTiles - 1] = 0; // 最後のタイルを空 (0で表現)
+
+            emptyTileIndex = totalTiles - 1; // 空のタイルの初期位置を更新
+
+            renderBoard(); // ボードをレンダリング
+            isSolved = false; // 初期状態では未解決
+            hideMessageBox(); // メッセージボックスを非表示にする
+        }
+
+        /**
+         * ボードをレンダリングする関数
+         */
+        function renderBoard() {
+            puzzleBoard.innerHTML = ''; // 既存のタイルをクリア
+
+            tiles.forEach((tileValue, index) => {
+                const tile = document.createElement('div');
+                tile.classList.add('puzzle-tile');
+                tile.dataset.index = index; // 現在のDOM上のインデックス
+                tile.dataset.value = tileValue; // タイルの値（1から8、または0）
+
+                if (tileValue === 0) {
+                    tile.classList.add('empty');
+                    tile.textContent = ''; // 空のタイルはテキストなし
                 } else {
-                    currentOperand += number;
+                    tile.textContent = tileValue;
                 }
-            }
-            updateDisplay(currentOperand);
-        }
 
-        /**
-         * 演算子ボタンがクリックされた時の処理
-         * @param {string} operator - クリックされた演算子
-         */
-        function chooseOperation(operator) {
-            if (currentOperand === '') return; // 数字が入力されていない場合は何もしない
-            if (previousOperand !== '' && operation !== null) {
-                // 既に前の演算と数字がある場合は、続けて計算を実行
-                calculate();
-            }
-            operation = operator;
-            previousOperand = currentOperand;
-            resetDisplay = true; // 次の数字入力でディスプレイをリセット
-        }
-
-        /**
-         * 計算を実行する関数
-         */
-        function calculate() {
-            let computation;
-            const prev = parseFloat(previousOperand);
-            const current = parseFloat(currentOperand);
-
-            if (isNaN(prev) || isNaN(current)) return; // 無効な数値の場合は何もしない
-
-            switch (operation) {
-                case '+':
-                    computation = prev + current;
-                    break;
-                case '-':
-                    computation = prev - current;
-                    break;
-                case '*':
-                    computation = prev * current;
-                    break;
-                case '/':
-                    // 0での除算を避ける
-                    if (current === 0) {
-                        currentOperand = 'エラー';
-                        operation = null;
-                        previousOperand = '';
-                        updateDisplay(currentOperand);
-                        return;
-                    }
-                    computation = prev / current;
-                    break;
-                default:
-                    return; // 演算子が選択されていない場合は何もしない
-            }
-
-            currentOperand = computation.toString();
-            operation = null;
-            previousOperand = '';
-            resetDisplay = true; // 計算結果表示後、次の数字入力でリセット
-            updateDisplay(currentOperand);
-        }
-
-        /**
-         * 全てをクリアする関数
-         */
-        function clearAll() {
-            currentOperand = '0';
-            previousOperand = '';
-            operation = null;
-            resetDisplay = false;
-            updateDisplay(currentOperand);
-        }
-
-        /**
-         * 符号を反転させる関数 (+/-)
-         */
-        function negateNumber() {
-            if (currentOperand === '0' || currentOperand === '' || currentOperand === 'エラー') return;
-            currentOperand = (parseFloat(currentOperand) * -1).toString();
-            updateDisplay(currentOperand);
-        }
-
-        /**
-         * パーセントを計算する関数
-         */
-        function calculatePercent() {
-            if (currentOperand === '' || currentOperand === 'エラー') return;
-            currentOperand = (parseFloat(currentOperand) / 100).toString();
-            updateDisplay(currentOperand);
-        }
-
-        // 各ボタンにイベントリスナーを追加
-        buttons.forEach(button => {
-            button.addEventListener('click', () => {
-                const value = button.dataset.value;
-                const action = button.dataset.action;
-
-                if (action === 'clear') {
-                    clearAll();
-                } else if (action === 'negate') {
-                    negateNumber();
-                } else if (action === 'percent') {
-                    calculatePercent();
-                } else if (action === 'operator') {
-                    chooseOperation(value);
-                } else if (action === 'equals') {
-                    calculate();
-                } else { // 数字ボタン
-                    appendNumber(value);
-                }
+                tile.addEventListener('click', () => moveTile(index)); // クリックイベントリスナーを追加
+                puzzleBoard.appendChild(tile);
             });
-        });
+        }
 
-        // 初期表示
-        updateDisplay(currentOperand);
+        /**
+         * タイルをシャッフルする関数
+         * (簡易的なシャッフル。解決可能性は保証しない)
+         */
+        function shuffleTiles() {
+            let shuffledTiles = [...tiles];
+            // Fisher-Yatesシャッフルアルゴリズム
+            for (let i = shuffledTiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledTiles[i], shuffledTiles[j]] = [shuffledTiles[j], shuffledTiles[i]];
+            }
+
+            // 空のタイルの位置を特定
+            emptyTileIndex = shuffledTiles.indexOf(0);
+
+            tiles = shuffledTiles; // シャッフルされたタイルを適用
+            renderBoard(); // ボードを再レンダリング
+            isSolved = false; // シャッフル後は未解決
+            hideMessageBox(); // メッセージボックスを非表示にする
+        }
+
+        /**
+         * タイルが移動可能かどうかを判定する関数
+         * @param {number} clickedIndex - クリックされたタイルのインデックス
+         * @returns {boolean} - 移動可能であればtrue、そうでなければfalse
+         */
+        function isValidMove(clickedIndex) {
+            const emptyRow = Math.floor(emptyTileIndex / boardSize);
+            const emptyCol = emptyTileIndex % boardSize;
+            const clickedRow = Math.floor(clickedIndex / boardSize);
+            const clickedCol = clickedIndex % boardSize;
+
+            // 空のタイルの上下左右に隣接しているかを確認
+            const isAdjacent = (
+                (Math.abs(emptyRow - clickedRow) === 1 && emptyCol === clickedCol) || // 上下
+                (Math.abs(emptyCol - clickedCol) === 1 && emptyRow === clickedRow)    // 左右
+            );
+            return isAdjacent;
+        }
+
+        /**
+         * タイルを移動する関数
+         * @param {number} clickedIndex - クリックされたタイルのインデックス
+         */
+        function moveTile(clickedIndex) {
+            if (isSolved) return; // 解決済みの場合は移動させない
+
+            if (isValidMove(clickedIndex)) {
+                // タイルの値を入れ替える
+                [tiles[emptyTileIndex], tiles[clickedIndex]] = [tiles[clickedIndex], tiles[emptyTileIndex]];
+                emptyTileIndex = clickedIndex; // 空のタイルの位置を更新
+
+                renderBoard(); // ボードを再レンダリング
+                checkWin(); // 勝利条件をチェック
+            }
+        }
+
+        /**
+         * パズルが解決済みかどうかをチェックする関数
+         */
+        function checkWin() {
+            // 最後のタイルが空であることを考慮し、0以外のタイルが正しい順序になっているか確認
+            const correctOrder = Array.from({ length: totalTiles - 1 }, (_, i) => i + 1);
+            let solved = true;
+            for (let i = 0; i < totalTiles - 1; i++) {
+                if (tiles[i] !== correctOrder[i]) {
+                    solved = false;
+                    break;
+                }
+            }
+
+            // 最後のタイルが空（0）の位置にあるか確認
+            if (tiles[totalTiles - 1] !== 0) {
+                solved = false;
+            }
+
+            if (solved) {
+                isSolved = true;
+                showMessageBox('パズルをクリアしました！おめでとうございます！');
+            }
+        }
+
+        // イベントリスナー
+        shuffleButton.addEventListener('click', shuffleTiles);
+        messageCloseButton.addEventListener('click', hideMessageBox);
+
+        // ページロード時にゲームを初期化
+        window.onload = function() {
+            initGame();
+            shuffleTiles(); // ゲーム開始時に一度シャッフル
+        };
     </script>
 </body>
 </html>
